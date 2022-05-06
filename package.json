@@ -23,7 +23,7 @@
     "webpack-dev-server": "^4.9.0"
   },
   "dependencies": {
-    "soundswallower": "^0.2.0-alpha2",
+    "soundswallower": "^0.2.0-alpha3",
     "webworker-promise": "^0.5.0"
   }
 }

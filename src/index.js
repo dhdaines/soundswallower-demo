@@ -1,3 +1,8 @@
+// Copyright (c) 2022 David Huggins-Daines <dhdaines@gmail.com>
+// Originally based on index.html from pocketsphinx.js, which is:
+// Copyright © 2013-2017 Sylvain Chevalier
+// MIT license, see LICENSE for details
+
 const WebworkerPromise = require("webworker-promise");
 
 // Extra dictionary words
