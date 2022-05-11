@@ -43,6 +43,8 @@ async function start() {
 
 async function stop() {
     await recognizer.stop();
+    let hyp = recognizer.get_hyp();
+    let hypseg = recognizer.get_hypseg();
     return {hyp: hyp, hypseg: hypseg};
 }
 

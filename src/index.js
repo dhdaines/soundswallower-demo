@@ -36,9 +36,12 @@ var grammarCities = {numStates: 1, start: 0, end: 0,
 				   {from: 0, to: 0, word: "berlin"}]};
 var grammars = {"Digits": grammarDigits, "Cities": grammarCities};
 // These will be initialized later
-var outputContainer, audioContext, ssjs, recognizer;
+var outputContainer, context, ssjs, recognizer, worklet_node;
 // Only when both recorder and recognizer do we have a ready application
 var isRecorderReady = isRecognizerReady = false;
+// Do not feed data to the recorder if not ready
+var recording = false;
+
 // To display the hypothesis sent by the recognizer
 function updateHyp(hyp) {
     if (outputContainer) outputContainer.innerHTML = hyp;
@@ -58,6 +61,7 @@ function updateStatus(newStatus) {
 function displayRecording(display) {
     if (display) document.getElementById('recording-indicator').innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
     else document.getElementById('recording-indicator').innerHTML = "";
+    recording = display;
 };
 
 // We get the grammars defined below and fill in the input select tag
@@ -70,6 +74,9 @@ var updateGrammars = function() {
     }                          
     selectTag.onchange = function() {
 	var name = this.options[this.selectedIndex].innerText;
+	recognizer.postMessage({
+	    command: "setGrammar", data: grammars[name]
+	});
     }
     // Load the first grammar
     selectTag.onchange();
@@ -77,6 +84,7 @@ var updateGrammars = function() {
 
 // This adds words to the recognizer. When it calls back, we are ready
 var feedWords = function(words) {
+    recognizer.postMessage({command: 'addWords', data: words});
 };
 
 // When the page is loaded, we spawn a new recognizer worker and
@@ -90,11 +98,15 @@ window.onload = async function() {
     outputContainer = document.getElementById("output");
     updateStatus("Initializing web audio, waiting for approval to access the microphone");
     try {
-	// For legacy browsers (see Web Audio API doc)
 	const AudioContext = window.AudioContext || window.webkitAudioContext;
-	audioContext = new AudioContext();
+	context = new AudioContext();
+	context.suspend();
 	const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-        const source = audioContext.createMediaStreamSource(stream);
+        const source = context.createMediaStreamSource(stream);
+	const workletURL = new URL("./soundswallower-processor.js", import.meta.url);
+	await context.audioWorklet.addModule(workletURL);
+	worklet_node = new AudioWorkletNode(context, 'soundswallower-processor');
+	source.connect(worklet_node).connect(context.destination);
         isRecorderReady = true;
         updateUI();
         updateStatus("Audio recorder ready");
@@ -108,28 +120,47 @@ window.onload = async function() {
 	recognizer = new WebworkerPromise(worker);
 	let ready = await recognizer.postMessage({
 	    command: "initialize",
-	    data: {hmm: "en-us", dict: "en-us.dict", loglevel: "DEBUG"}
+	    data: {hmm: "en-us", dict: "en-us.dict", loglevel: "DEBUG",
+		   samprate: context.sampleRate, nfft: 2048}
 	});
+	updateGrammars();
+	feedWords(wordList);
+	updateStatus("Speech recognizer ready");
     }
     catch (e) {
 	updateStatus("Error initializing speech recognizer: " + e.message);
     }
-    updateStatus("Speech recognizer ready");
-    startBtn.disabled = false;
-    stopBtn.disabled = false;
+    worklet_node.port.onmessage = async function(event) {
+	if (!recording)
+	    return true;
+	try {
+	    const { hyp, hypseg } = await recognizer.postMessage({
+		command: "process",
+		data: event.data
+	    });
+	    if (hyp !== undefined)
+		updateHyp(hyp);
+	}
+	catch (e) {
+	    updateStatus("Error processing data: " + e.message);
+	}
+	return true;
+    };
     startBtn.onclick = async function() {
-	audioContext.resume();
+	context.resume();
 	try {
 	    await recognizer.postMessage({
 		command: "start"
-	    })
+	    });
 	}
 	catch (e) {
 	    updateStatus("Error starting recognition: " + e.message);
 	}
 	displayRecording(true);
+	return true;
     };
     stopBtn.onclick = async function() {
+	context.suspend();
 	try {
 	    await recognizer.postMessage({
 		command: "stop"
@@ -139,6 +170,9 @@ window.onload = async function() {
 	    updateStatus("Error stopping recognition: " + e.message);
 	}
 	displayRecording(false);
+	return true;
     };
+    startBtn.disabled = false;
+    stopBtn.disabled = false;
 };
 
