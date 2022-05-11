@@ -26,10 +26,15 @@ const config = {
 
     // Add your plugins here
     // Learn more about plugins from https://webpack.js.org/configuration/plugins/
+      
+      // Just copy the damn WASM because webpack can't recognize
+      // Emscripten modules.
       new CopyPlugin({
 	  patterns: [
 	      { from: "node_modules/soundswallower/soundswallower.wasm*",
 		to: "[name][ext]"},
+	      // And copy the model files too.  FIXME: Not sure how
+	      // this will work with require("soundswallower/model")
 	      { from: modelDir,
 		to: "model"},
 	  ],
@@ -49,9 +54,7 @@ const config = {
       // Learn more about loaders from https://webpack.js.org/loaders/
     ],
   },
-    // Eliminate webpack's node junk when using webpack, so we can
-    // support web and node from the same build (FIXME: maybe we just
-    // want to not support web and node from the same build)
+    // Eliminate webpack's node junk when using webpack
     resolve: {
 	fallback: {
 	    crypto: false,
