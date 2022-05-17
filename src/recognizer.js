@@ -46,12 +46,12 @@ async function stop() {
     return {hyp: hyp, hypseg: hypseg};
 }
 
-function addWords(words) {
+async function addWords(words) {
     let rv;
     for (const i in words) {
 	var w = words[i];
 	if (w.length == 2) {
-	    rv = recognizer.add_word(w[0], w[1], (i == words.length - 1));
+	    rv = await recognizer.add_word(w[0], w[1], (i == words.length - 1));
 	    if (rv == -1)
 		break;
 	}
