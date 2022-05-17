@@ -31,8 +31,6 @@ async function onMessage(message) {
 
 async function initialize(config) {
     ssjs = await require("soundswallower")()
-    if ("hmm" in config)
-	ssjs.load_model(config.hmm);
     recognizer = new ssjs.Decoder(config);
     await recognizer.initialize();
 }

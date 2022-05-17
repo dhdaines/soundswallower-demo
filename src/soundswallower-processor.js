@@ -1,7 +1,6 @@
 class SoundSwallowerProcessor extends AudioWorkletProcessor {
-
-    // Simply forward the (mixed-down) data back to the main thread as
-    // Int16Array
+    // Simply mix-down the data and send it back to the main thread as
+    // an Int16Array
     process(inputs, outputs, parameters) {
 	const input = inputs[0];
 	if (input.length == 0) {

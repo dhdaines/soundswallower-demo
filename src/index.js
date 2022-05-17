@@ -120,8 +120,7 @@ window.onload = async function() {
 	recognizer = new WebworkerPromise(worker);
 	let ready = await recognizer.postMessage({
 	    command: "initialize",
-	    data: {hmm: "en-us", dict: "en-us.dict", loglevel: "DEBUG",
-		   samprate: context.sampleRate, nfft: 2048}
+	    data: {loglevel: "DEBUG", samprate: context.sampleRate, nfft: 2048}
 	});
 	updateGrammars();
 	feedWords(wordList);
