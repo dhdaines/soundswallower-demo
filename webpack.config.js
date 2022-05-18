@@ -54,6 +54,7 @@ const config = {
 		test: /\.(dict|gram)$/i,
 		type: "asset/resource",
 		generator: {
+		    // Don't mangle the names of dictionaries or grammars
 		    filename: "model/[name][ext]"
 		}
 	    },
