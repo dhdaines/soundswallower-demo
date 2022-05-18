@@ -14,8 +14,6 @@ async function onMessage(message) {
     switch(message.command) {
     case 'initialize':
 	return initialize(message.data);
-    case 'lazyLoadModel':
-	return lazyLoadModel(message.data);
     case 'addWords':
 	return addWords(message.data);
     case 'loadDict':
@@ -40,7 +38,7 @@ async function initialize(config) {
 }
 
 async function start() {
-    return recognizer.start();
+    await recognizer.start();
 }
 
 async function stop() {
@@ -88,7 +86,8 @@ async function setGrammar(grammar) {
     let fsg = recognizer.create_fsg("_default",
 				    grammar.start, grammar.end,
 				    grammar.transitions);
-    return recognizer.set_fsg(fsg);
+    await recognizer.set_fsg(fsg);
+    fsg.delete();
 }
 
 async function loadGrammar(grammar_url) {
@@ -96,7 +95,8 @@ async function loadGrammar(grammar_url) {
     if (response.ok) {
 	let jsgf_string = await response.text();
 	let fsg = recognizer.parse_jsgf(jsgf_string);
-	return recognizer.set_fsg(fsg);
+	await recognizer.set_fsg(fsg);
+	fsg.delete();
     }
     else
 	throw new Error("Failed to fetch " + grammar_url + " :"
