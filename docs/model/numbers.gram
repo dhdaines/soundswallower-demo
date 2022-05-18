@@ -1,0 +1,12 @@
+#JSGF V1.0;
+grammar numbers;
+public <numbers> = <number>*;
+<number> = [<thousands>] [<thousands.less>];
+<thousands> = <thousands.less> thousand;
+<thousands.less> = [<hundreds>] [and] [<hundreds.less>];
+<hundreds> = <hundreds.less> hundred;
+<hundreds.less> = ([<tens>] <digit> | <teen>);
+<tens> = twenty | thirty | forty | fifty | sixty | seventy | eighty | ninety;
+<teen> = ten | eleven | twelve | thirteen | fourteen | fifteen | sixteen
+       | seventeen | eighteen | nineteen;
+<digit> = one | two | three | four | five | six | seven | eight | nine;
