@@ -101,7 +101,7 @@ window.onload = async function() {
     try {
 	const AudioContext = window.AudioContext || window.webkitAudioContext;
 	context = new AudioContext();
-	context.suspend();
+	await context.suspend();
 	const stream = await navigator.mediaDevices.getUserMedia({audio: true});
         media_source = context.createMediaStreamSource(stream);
 	const workletURL = new URL("./soundswallower-processor.js", import.meta.url);
@@ -166,12 +166,12 @@ window.onload = async function() {
 	catch (e) {
 	    updateStatus("Error starting recognition: " + e.message);
 	}
-	context.resume();
+	await context.resume();
 	displayRecording(true);
 	return true;
     };
     stopBtn.onclick = async function() {
-	context.suspend();
+	await context.suspend();
 	if (!recording)
 	    return;
 	try {
