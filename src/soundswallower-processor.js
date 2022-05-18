@@ -13,9 +13,11 @@ class SoundSwallowerProcessor extends AudioWorkletProcessor {
     }
     process(inputs, outputs, parameters) {
 	let input = inputs[0];
+	// Somehow we got disconnected, WTF Web Audio?!?!
 	if (input.length == 0) {
 	    this.flush();
-	    return true;
+	    this.port.postMessage("ERROR");
+	    return false;
 	}
 	if (this.pos + input[0].length > 2048)
 	    this.flush();
@@ -23,6 +25,7 @@ class SoundSwallowerProcessor extends AudioWorkletProcessor {
 	    const sample = input[0][i] + input[1][i] * 32768;
 	    this.short_buf[this.pos++] = sample;
 	}
+	// we don't actually produce output... but we want to live!
 	return true;
     }
 }

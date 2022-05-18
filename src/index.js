@@ -12,7 +12,7 @@ var grammars = {Numbers: require("./numbers.gram"),
 var dicts = {Cities: require("./cities.dict")};
 
 // These will be initialized later
-var outputContainer, context, ssjs, recognizer, worklet_node;
+var outputContainer, context, ssjs, recognizer, media_source, worklet_node;
 // Only when both recorder and recognizer do we have a ready application
 var isRecorderReady = isRecognizerReady = false;
 // Do not feed data to the recorder if not ready
@@ -103,11 +103,11 @@ window.onload = async function() {
 	context = new AudioContext();
 	context.suspend();
 	const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-        const source = context.createMediaStreamSource(stream);
+        media_source = context.createMediaStreamSource(stream);
 	const workletURL = new URL("./soundswallower-processor.js", import.meta.url);
 	await context.audioWorklet.addModule(workletURL);
 	worklet_node = new AudioWorkletNode(context, 'soundswallower-processor');
-	source.connect(worklet_node).connect(context.destination);
+	media_source.connect(worklet_node).connect(context.destination);
         isRecorderReady = true;
         updateUI();
         updateStatus("Audio recorder ready");
@@ -133,6 +133,12 @@ window.onload = async function() {
     worklet_node.port.onmessage = async function(event) {
 	if (!recording)
 	    return true;
+	if (event.data == "ERROR") {
+	    updateStatus("AudioWorkletNode got disconnected somehow?!?!?!");
+	    worklet_node = new AudioWorkletNode(context, 'soundswallower-processor');
+	    media_source.connect(worklet_node).connect(context.destination);
+	    return true;
+	}
 	try {
 	    const { hyp, hypseg } = await recognizer.postMessage({
 		command: "process",
@@ -152,8 +158,6 @@ window.onload = async function() {
 		command: "stop"
 	    });
 	}
-	else
-	    context.resume();
 	try {
 	    await recognizer.postMessage({
 		command: "start"
@@ -162,13 +166,14 @@ window.onload = async function() {
 	catch (e) {
 	    updateStatus("Error starting recognition: " + e.message);
 	}
+	context.resume();
 	displayRecording(true);
 	return true;
     };
     stopBtn.onclick = async function() {
+	context.suspend();
 	if (!recording)
 	    return;
-	context.suspend();
 	try {
 	    await recognizer.postMessage({
 		command: "stop"
