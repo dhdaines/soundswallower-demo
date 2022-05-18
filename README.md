@@ -20,4 +20,4 @@ Because SoundSwallower still relies on Emscripten's filesystem
 emulation to load model files, it is necessary to run it within a web
 worker.  We use
 [webworker-promise](https://github.com/kwolfy/webworker-promise) to
-make the code more readable
+make the code more readable.

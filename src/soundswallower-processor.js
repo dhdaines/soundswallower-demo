@@ -1,17 +1,28 @@
 class SoundSwallowerProcessor extends AudioWorkletProcessor {
-    // Simply mix-down the data and send it back to the main thread as
-    // an Int16Array
+    // Mix-down the data and accumulate it a bit (128 samples is much
+    // too short) before sending back to the main thread
+    constructor() {
+	super(...arguments);
+	this.short_buf = new Int16Array(2048);
+	this.pos = 0;
+    }
+    flush() {
+	const send_buf = this.short_buf.slice(0, this.pos);
+	this.pos = 0;
+	this.port.postMessage(send_buf, [send_buf.buffer]);
+    }
     process(inputs, outputs, parameters) {
-	const input = inputs[0];
+	let input = inputs[0];
 	if (input.length == 0) {
+	    this.flush();
 	    return true;
 	}
-	const short_buf = new Int16Array(input[0].length);
+	if (this.pos + input[0].length > 2048)
+	    this.flush();
 	for (const i in input[0]) {
 	    const sample = input[0][i] + input[1][i] * 32768;
-	    short_buf[i] = sample;
+	    this.short_buf[this.pos++] = sample;
 	}
-	this.port.postMessage(short_buf, [short_buf.buffer]);
 	return true;
     }
 }

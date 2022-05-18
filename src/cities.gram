@@ -1,0 +1,5 @@
+#JSGF V1.0;
+grammar cities;
+public <cities> = <city>*;
+<city> = new_york | new_york_city | paris | shanghai | san_francisco
+       | london | berlin;

@@ -5,36 +5,12 @@
 
 const WebworkerPromise = require("webworker-promise");
 
-// Extra dictionary words
-var wordList = [
-    ["san_francisco", "S AE N F R AE N S IH S K OW"],
-    ["new_york", "N UW Y AO R K"],
-    // This salsa's made in...
-    ["new_york_city", "N UW Y AO R K S IH T IY"]
-];
-// This grammar recognizes digits
-var grammarDigits = {
-    numStates: 1, start: 0, end: 0,
-    transitions: [{from: 0, to: 0, word: "one"},
-		  {from: 0, to: 0, word: "two"},
-		  {from: 0, to: 0, word: "three"},
-		  {from: 0, to: 0, word: "four"},
-		  {from: 0, to: 0, word: "five"},
-		  {from: 0, to: 0, word: "six"},
-		  {from: 0, to: 0, word: "seven"},
-		  {from: 0, to: 0, word: "eight"},
-		  {from: 0, to: 0, word: "nine"},
-		  {from: 0, to: 0, word: "zero"}]};
-// This grammar recognizes a few cities names
-var grammarCities = {numStates: 1, start: 0, end: 0,
-		     transitions: [{from: 0, to: 0, word: "new_york"},
-				   {from: 0, to: 0, word: "new_york_city"},
-				   {from: 0, to: 0, word: "paris"},
-				   {from: 0, to: 0, word: "shanghai"},
-				   {from: 0, to: 0, word: "san_francisco"},
-				   {from: 0, to: 0, word: "london"},
-				   {from: 0, to: 0, word: "berlin"}]};
-var grammars = {"Digits": grammarDigits, "Cities": grammarCities};
+// Package these with Webpack
+var grammars = {Numbers: require("./numbers.gram"),
+		Cities: require("./cities.gram"),
+		Pizza: require("./pizza.gram")}
+var dicts = {Cities: require("./cities.dict")};
+
 // These will be initialized later
 var outputContainer, context, ssjs, recognizer, worklet_node;
 // Only when both recorder and recognizer do we have a ready application
@@ -44,12 +20,14 @@ var recording = false;
 
 // To display the hypothesis sent by the recognizer
 function updateHyp(hyp) {
-    if (outputContainer) outputContainer.innerHTML = hyp;
+    if (outputContainer)
+	outputContainer.innerHTML = hyp;
 };
 
 // This updates the UI when the app might get ready
 function updateUI() {
-    if (isRecorderReady && isRecognizerReady) startBtn.disabled = stopBtn.disabled = false;
+    if (isRecorderReady && isRecognizerReady)
+	startBtn.disabled = stopBtn.disabled = false;
 };
 
 // This is just a logging window where we display the status
@@ -59,8 +37,10 @@ function updateStatus(newStatus) {
 
 // A not-so-great recording indicator
 function displayRecording(display) {
-    if (display) document.getElementById('recording-indicator').innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
-    else document.getElementById('recording-indicator').innerHTML = "";
+    if (display)
+	document.getElementById('recording-indicator').innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+    else
+	document.getElementById('recording-indicator').innerHTML = "";
     recording = display;
 };
 
@@ -72,19 +52,40 @@ var updateGrammars = function() {
         newElt.innerHTML = name;
         selectTag.appendChild(newElt);
     }                          
-    selectTag.onchange = function() {
+    selectTag.onchange = async function() {
 	var name = this.options[this.selectedIndex].innerText;
-	recognizer.postMessage({
-	    command: "setGrammar", data: grammars[name]
+	var was_recording;
+	if (recording) {
+	    was_recording = true;
+	    await recognizer.postMessage({
+		command: "stop"
+	    });
+	    displayRecording(false);
+	}
+	await recognizer.postMessage({
+	    command: "loadGrammar", data: grammars[name]
 	});
+	if (was_recording) {
+	    try {
+		await recognizer.postMessage({
+		    command: "start"
+		});
+	    }
+	    catch (e) {
+		updateStatus("Error starting recognition: " + e.message);
+	    }
+	    displayRecording(true);
+	}
     }
     // Load the first grammar
     selectTag.onchange();
 };
 
 // This adds words to the recognizer. When it calls back, we are ready
-var feedWords = function(words) {
-    recognizer.postMessage({command: 'addWords', data: words});
+var feedWords = function() {
+    for (const name in dicts) {
+	recognizer.postMessage({command: 'loadDict', data: dicts[name]});
+    }
 };
 
 // When the page is loaded, we spawn a new recognizer worker and
@@ -123,7 +124,7 @@ window.onload = async function() {
 	    data: {loglevel: "DEBUG", samprate: context.sampleRate, nfft: 2048}
 	});
 	updateGrammars();
-	feedWords(wordList);
+	feedWords();
 	updateStatus("Speech recognizer ready");
     }
     catch (e) {
@@ -146,7 +147,13 @@ window.onload = async function() {
 	return true;
     };
     startBtn.onclick = async function() {
-	context.resume();
+	if (recording) {
+	    await recognizer.postMessage({
+		command: "stop"
+	    });
+	}
+	else
+	    context.resume();
 	try {
 	    await recognizer.postMessage({
 		command: "start"
@@ -159,6 +166,8 @@ window.onload = async function() {
 	return true;
     };
     stopBtn.onclick = async function() {
+	if (!recording)
+	    return;
 	context.suspend();
 	try {
 	    await recognizer.postMessage({
@@ -168,6 +177,12 @@ window.onload = async function() {
 	catch (e) {
 	    updateStatus("Error stopping recognition: " + e.message);
 	}
+	const { hyp, hypseg } = await recognizer.postMessage({
+	    command: "process",
+	    data: event.data
+	});
+	if (hyp !== undefined)
+	    updateHyp(hyp);
 	displayRecording(false);
 	return true;
     };

@@ -6,8 +6,6 @@ const CopyPlugin = require("copy-webpack-plugin");
 
 const isProduction = process.env.NODE_ENV == "production";
 
-const stylesHandler = "style-loader";
-
 const modelDir = require("soundswallower/model");
 
 const config = {
@@ -44,7 +42,7 @@ const config = {
     rules: [
       {
         test: /\.css$/i,
-        use: [stylesHandler, "css-loader", "postcss-loader"],
+        use: ["style-loader", "css-loader"],
       },
       {
         test: /\.(eot|svg|ttf|woff|woff2|png|jpg|gif)$/i,
@@ -52,6 +50,10 @@ const config = {
       },
       // Add your rules for custom modules here
       // Learn more about loaders from https://webpack.js.org/loaders/
+      {
+        test: /\.(dict|gram)$/i,
+        type: "asset/resource",
+      },
     ],
   },
     // Eliminate webpack's node junk when using webpack
