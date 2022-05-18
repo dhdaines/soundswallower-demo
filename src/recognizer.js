@@ -69,8 +69,11 @@ async function loadDict(dict_url) {
     if (response.ok) {
 	let dict_string = await response.text();
 	let re = /^(\S+)\s+(.*)$/mg;
-	for (const m of dict_string.matchAll(re)) {
-	    rv = await recognizer.add_word(m[1], m[2]);
+	for (const m of dict_string.trim().matchAll(re)) {
+	    // Fancy way to tell if this is the last line
+	    let end = m.index + m[0].length;
+	    let rv = await recognizer.add_word(m[1], m[2],
+					       end == dict_string.length);
 	    if (rv == -1)
 		throw new Error("Failed to add word "
 				+ m[1] + " with pronunciation " + m[2]);
