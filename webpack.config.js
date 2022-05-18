@@ -11,7 +11,8 @@ const modelDir = require("soundswallower/model");
 const config = {
   entry: "./src/index.js",
   output: {
-    path: path.resolve(__dirname, "dist"),
+      path: path.resolve(__dirname, "docs"),
+      publicPath: "/soundswallower-demo/"
   },
   devServer: {
     open: true,
