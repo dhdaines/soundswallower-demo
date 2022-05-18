@@ -51,8 +51,11 @@ const config = {
       // Add your rules for custom modules here
       // Learn more about loaders from https://webpack.js.org/loaders/
       {
-        test: /\.(dict|gram)$/i,
-        type: "asset/resource",
+          test: /\.(dict|gram)$/i,
+          type: "asset/resource",
+	  generator: {
+	      filename: "model/[name][ext]"
+	  }
       },
     ],
   },
