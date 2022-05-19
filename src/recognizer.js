@@ -6,39 +6,26 @@
 var ssjs;
 var recognizer = null;
 const registerWebWorker = require('webworker-promise/lib/register');
-registerWebWorker(onMessage);
-
-async function onMessage(message) {
-    if (message.command != "initialize" && recognizer == null)
-	throw new Error("Decoder not yet initialized");
-    switch(message.command) {
-    case 'initialize':
-	return initialize(message.data);
-    case 'addWords':
-	return addWords(message.data);
-    case 'loadDict':
-	return loadDict(message.data);
-    case 'setGrammar':
-	return setGrammar(message.data);
-    case 'loadGrammar':
-	return loadGrammar(message.data);
-    case 'start':
-	return start(message.data);
-    case 'stop':
-	return stop();
-    case 'process':
-	return process(message.data);
-    }
-}
+registerWebWorker()
+    .operation("initialize", initialize)
+    .operation("addWords", addWords)
+    .operation("loadDict", loadDict)
+    .operation("setGrammar", setGrammar)
+    .operation("loadGrammar", loadGrammar)
+    .operation("start", start)
+    .operation("stop", stop)
+    .operation("process", process)
+    .operation("getHyp", getHyp)
+    .operation("getHypSeg", getHypSeg);
 
 async function initialize(config) {
     ssjs = await require("soundswallower")()
     recognizer = new ssjs.Decoder(config);
-    await recognizer.initialize();
+    return recognizer.initialize();
 }
 
 async function start() {
-    await recognizer.start();
+    return recognizer.start();
 }
 
 async function stop() {
@@ -104,8 +91,13 @@ async function loadGrammar(grammar_url) {
 }
 
 async function process(array) {
-    var output = await recognizer.process_raw(array);
-    let hyp = recognizer.get_hyp();
-    let hypseg = recognizer.get_hypseg();
-    return {hyp: hyp, hypseg: hypseg};
+    return recognizer.process_raw(array);
+}
+
+function getHyp() {
+    return recognizer.get_hyp();
+}
+
+function getHypSeg() {
+    return recognizer.get_hypseg();
 }

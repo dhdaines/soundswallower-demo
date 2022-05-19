@@ -45,7 +45,7 @@ function displayRecording(display) {
 };
 
 // We get the grammars defined below and fill in the input select tag
-var updateGrammars = function() {
+var updateGrammars = async function() {
     var selectTag = document.getElementById('grammars');
     for (const name in grammars) {
         var newElt = document.createElement('option');
@@ -57,19 +57,13 @@ var updateGrammars = function() {
 	var was_recording;
 	if (recording) {
 	    was_recording = true;
-	    await recognizer.postMessage({
-		command: "stop"
-	    });
+	    await recognizer.exec("stop");
 	    displayRecording(false);
 	}
-	await recognizer.postMessage({
-	    command: "loadGrammar", data: grammars[name]
-	});
+	await recognizer.exec("loadGrammar", grammars[name]);
 	if (was_recording) {
 	    try {
-		await recognizer.postMessage({
-		    command: "start"
-		});
+		await recognizer.exec("start");
 	    }
 	    catch (e) {
 		updateStatus("Error starting recognition: " + e.message);
@@ -78,13 +72,13 @@ var updateGrammars = function() {
 	}
     }
     // Load the first grammar
-    selectTag.onchange();
+    await selectTag.onchange();
 };
 
 // This adds words to the recognizer. When it calls back, we are ready
-var feedWords = function() {
+var feedWords = async function() {
     for (const name in dicts) {
-	recognizer.postMessage({command: 'loadDict', data: dicts[name]});
+	await recognizer.exec("loadDict", dicts[name]);
     }
 };
 
@@ -117,14 +111,12 @@ window.onload = async function() {
     }
     updateStatus("Initializing speech recognizer");
     try {
-	const worker = new Worker(new URL("./recognizer.js", import.meta.url));
-	recognizer = new WebworkerPromise(worker);
-	let ready = await recognizer.postMessage({
-	    command: "initialize",
-	    data: {loglevel: "DEBUG", samprate: context.sampleRate}
-	});
-	updateGrammars();
-	feedWords();
+	recognizer = new WebworkerPromise(
+	    new Worker(new URL("./recognizer.js", import.meta.url)));
+	await recognizer.exec("initialize",
+			      {loglevel: "DEBUG", samprate: context.sampleRate});
+	await updateGrammars();
+	await feedWords();
 	updateStatus("Speech recognizer ready");
     }
     catch (e) {
@@ -140,12 +132,11 @@ window.onload = async function() {
 	    return true;
 	}
 	try {
-	    const { hyp, hypseg } = await recognizer.postMessage({
-		command: "process",
-		data: event.data
-	    });
+	    await recognizer.exec("process", event.data,
+				  [event.data.buffer]);
+	    hyp = await recognizer.exec("getHyp")
 	    if (hyp !== undefined)
-		updateHyp(hyp);
+		updateHyp(hyp);	    
 	}
 	catch (e) {
 	    updateStatus("Error processing data: " + e.message);
@@ -154,14 +145,10 @@ window.onload = async function() {
     };
     startBtn.onclick = async function() {
 	if (recording) {
-	    await recognizer.postMessage({
-		command: "stop"
-	    });
+	    await recognizer.exec("stop");
 	}
 	try {
-	    await recognizer.postMessage({
-		command: "start"
-	    });
+	    await recognizer.exec("start");
 	}
 	catch (e) {
 	    updateStatus("Error starting recognition: " + e.message);
@@ -175,20 +162,14 @@ window.onload = async function() {
 	if (!recording)
 	    return;
 	try {
-	    await recognizer.postMessage({
-		command: "stop"
-	    });
+	    const { hyp, hypseg } = await recognizer.exec("stop");
+	    if (hyp !== undefined)
+		updateHyp(hyp);
+	    displayRecording(false);
 	}
 	catch (e) {
 	    updateStatus("Error stopping recognition: " + e.message);
 	}
-	const { hyp, hypseg } = await recognizer.postMessage({
-	    command: "process",
-	    data: event.data
-	});
-	if (hyp !== undefined)
-	    updateHyp(hyp);
-	displayRecording(false);
 	return true;
     };
     startBtn.disabled = false;
