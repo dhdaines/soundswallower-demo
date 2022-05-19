@@ -575,12 +575,12 @@ class Decoder {
 	}
 	async function init_acmod(ps) {
 	    let rv = Module._ps_init_acmod(ps);
-	    if (rv < 0)
+	    if (rv == 0)
 		throw new Error("Failed to initialize acoustic model");
 	}
 	async function init_dict(ps) {
 	    let rv = Module._ps_init_dict(ps);
-	    if (rv < 0)
+	    if (rv == 0)
 		throw new Error("Failed to initialize dictionaries");
 	}
 	async function init_grammar(ps) {
@@ -5366,6 +5366,11 @@ var _ps_init_grammar = Module["_ps_init_grammar"] = function() {
 /** @type {function(...*):?} */
 var _ps_set_fsg = Module["_ps_set_fsg"] = function() {
   return (_ps_set_fsg = Module["_ps_set_fsg"] = Module["asm"]["ps_set_fsg"]).apply(null, arguments);
+};
+
+/** @type {function(...*):?} */
+var _ps_reinit_fe = Module["_ps_reinit_fe"] = function() {
+  return (_ps_reinit_fe = Module["_ps_reinit_fe"] = Module["asm"]["ps_reinit_fe"]).apply(null, arguments);
 };
 
 /** @type {function(...*):?} */
