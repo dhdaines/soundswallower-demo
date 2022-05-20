@@ -22,7 +22,7 @@ There is some magic to getting this to work so pay attention.  The
 [Webpack configuration](webpack.config.js) has a few extra elements
 that allow loading the SoundSwallower module (in particular the
 WebAssembly part, compiled with
-[Emscripten](http://www.emscripten.org) to succeed.  Look at these
+[Emscripten](http://www.emscripten.org)) to succeed.  Look at these
 parts of the `config` variable in particular:
 
 ```js
@@ -75,15 +75,16 @@ make the code "yinque un peu" more readable.
 The audio capture is implemented in a separate worker, an
 `AudioWorkletNode` to be precise, because ... well, because, for the
 moment.  Ideally we'd just use the [MediaRecorder
-API)(https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder)
+API](https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder)
 but for some bizarre reason it is utterly incapable of just capturing
 audio as plain old linear PCM, and insists on encoding it with some
 kind of codec, and no, you can't rely on your browser supporting any
 particular codec, and NO YOU CANNOT QUERY THE LIST OF CODECS EITHER!!!
 NO SOUP FOR YOU!!!
 
-In other words, speech is like everything else in the world of
-JavaScript and Web, it kind of sort of works, maybe.  Our worklet just
+In other words, WebAudio is like everything else in the world of
+JavaScript and Web, it works for the use case it was invented for, and
+if your use case is different, tough luck, buddy.  So our worklet just
 converts the obligatory 44.1kHz stereo 32-bit floating-point data (128
 samples at a time! no soup for you!) into something more reasonable.
 In the future we might just let WebAudio do FFTs for us to avoid all
