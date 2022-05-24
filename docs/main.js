@@ -229,7 +229,7 @@ module.exports = __webpack_require__.p + "model/pizza.gram";
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 "use strict";
-module.exports = __webpack_require__.p + "a1069556b139d8ae8268.js";
+module.exports = __webpack_require__.p + "b493a09b244d1ad98a03.js";
 
 /***/ })
 

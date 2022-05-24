@@ -3,7 +3,7 @@ class SoundSwallowerProcessor extends AudioWorkletProcessor {
     // too short) before sending back to the main thread
     constructor() {
 	super(...arguments);
-	this.short_buf = new Int16Array(2048);
+	this.short_buf = new Float32Array(2048);
 	this.pos = 0;
     }
     flush() {
@@ -22,7 +22,7 @@ class SoundSwallowerProcessor extends AudioWorkletProcessor {
 	if (this.pos + input[0].length > 2048)
 	    this.flush();
 	for (const i in input[0]) {
-	    const sample = input[0][i] + input[1][i] * 32768;
+	    const sample = input[0][i] + input[1][i];
 	    this.short_buf[this.pos++] = sample;
 	}
 	// we don't actually produce output... but we want to live!

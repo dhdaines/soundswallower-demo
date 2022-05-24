@@ -85,7 +85,6 @@ NO SOUP FOR YOU!!!
 In other words, WebAudio is like everything else in the world of
 JavaScript and Web, it works for the use case it was invented for, and
 if your use case is different, tough luck, buddy.  So our worklet just
-converts the obligatory 44.1kHz stereo 32-bit floating-point data (128
-samples at a time! no soup for you!) into something more reasonable.
-In the future we might just let WebAudio do FFTs for us to avoid all
-this hassle.
+converts the obligatory 44.1kHz stereo data (128 samples at a time! no
+soup for you!) into something more reasonable.  In the future we might
+just let WebAudio do FFTs for us to avoid all this hassle.

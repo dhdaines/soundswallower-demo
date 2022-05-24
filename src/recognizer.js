@@ -91,7 +91,7 @@ async function loadGrammar(grammar_url) {
 }
 
 async function process(array) {
-    return recognizer.process_raw(array);
+    return recognizer.process(array);
 }
 
 function getHyp() {
