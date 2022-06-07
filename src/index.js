@@ -88,10 +88,6 @@ window.onload = async function() {
 			 + response.statusText);
 	}
     }
-    selectTag.addEventListener("change", function() {
-	var name = this.options[this.selectedIndex].innerText;
-	loadGrammar(name);
-    });
     // Load the first grammar
     await loadGrammar(selectTag.options[selectTag.selectedIndex].innerText);
 
@@ -121,13 +117,10 @@ window.onload = async function() {
 	await recognizer.exec("initialize",
 			      {loglevel: "DEBUG", samprate: context.sampleRate});
 	await feedWords();
-	updateStatus("Speech recognizer ready");
     }
     catch (e) {
 	updateStatus("Error initializing speech recognizer: " + e.message);
     }
-    // Set up handler to reload grammar when modified
-    let timeout = null;
     async function updateGrammar() {
 	var was_recording;
 	if (recording) {
@@ -135,7 +128,13 @@ window.onload = async function() {
 	    await recognizer.exec("stop");
 	    displayRecording(false);
 	}
-	await recognizer.exec("setGrammar", jsgfArea.value);
+	try {
+	    await recognizer.exec("setGrammar", jsgfArea.value);
+	    updateStatus("Updated grammar");
+	}
+	catch (e) {
+		updateStatus("Failed to set grammar: " + e.message);
+	}
 	if (was_recording) {
 	    try {
 		await recognizer.exec("start");
@@ -148,6 +147,17 @@ window.onload = async function() {
     }
     // Load the current grammar
     await updateGrammar();
+    updateStatus("Speech recognizer ready");
+
+    // Set up select to update grammar
+    selectTag.addEventListener("change", async function() {
+	var name = this.options[this.selectedIndex].innerText;
+	await loadGrammar(name);
+	// Won't actually trigger the input event so update it here
+	await updateGrammar();
+    });
+    // Set up handler to reload grammar when modified
+    let timeout = null;
     jsgfArea.addEventListener("input", () => {
 	clearTimeout(timeout);
 	timeout = setTimeout(updateGrammar, INPUT_TIMEOUT);
@@ -164,7 +174,7 @@ window.onload = async function() {
 	try {
 	    await recognizer.exec("process", event.data,
 				  [event.data.buffer]);
-	    hyp = await recognizer.exec("getHyp")
+	    let hyp = await recognizer.exec("getHyp")
 	    if (hyp !== undefined)
 		updateHyp(hyp);	    
 	}
