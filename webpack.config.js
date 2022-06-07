@@ -2,11 +2,11 @@
 
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CopyPlugin = require("copy-webpack-plugin");
+const modelDir = require("soundswallower/model");
 
 const isProduction = process.env.NODE_ENV == "production";
-
-const modelDir = require("soundswallower/model");
 
 const config = {
     entry: "./src/index.js",
@@ -19,12 +19,12 @@ const config = {
     },
     plugins: [
 	new HtmlWebpackPlugin({
-	    template: "index.html",
+	    template: "src/index.html",
 	}),
+	new MiniCssExtractPlugin(),
 
 	// Add your plugins here
 	// Learn more about plugins from https://webpack.js.org/configuration/plugins/
-	
 	// Just copy the damn WASM because webpack can't recognize
 	// Emscripten modules.
 	new CopyPlugin({
@@ -47,6 +47,10 @@ const config = {
 	    // Add your rules for custom modules here
 	    // Learn more about loaders from https://webpack.js.org/loaders/
 	    {
+		test: /\.css$/i,
+		use: [ MiniCssExtractPlugin.loader, "css-loader" ],
+	    },
+	    {
 		test: /\.(dict|gram)$/i,
 		type: "asset/resource",
 		generator: {
@@ -56,7 +60,7 @@ const config = {
 	    },
 	],
     },
-    // Eliminate webpack's node junk when using webpack
+    // Eliminate emscripten's node junk when using webpack
     resolve: {
 	fallback: {
 	    crypto: false,

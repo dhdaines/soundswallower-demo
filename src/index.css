@@ -1,0 +1,30 @@
+.title-bar, .status-bar {
+    color: white;
+    background: black;
+    padding: 0.5em;
+    margin: 0;
+    margin-left: 1ex;
+    margin-right: 1ex;
+    text-align: center;
+}
+
+.title-bar h1 {
+    margin: 0;
+}
+
+.top-box {
+    margin: 1ex;
+    padding: 0.5em;
+    border: solid 1px black;
+}
+
+.grammar-box {
+    margin: 1ex;
+    padding: 0.5em;
+    border: solid 1px black;
+}
+
+#jsgf {
+    font-family: monospace;
+    height: 20em;
+}

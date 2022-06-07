@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>SoundSwallower demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8">
+  </head>
+  <body>
+    <div class="pure-g">
+      <div class="pure-u-1 title-bar">
+	<h1>SoundSwallower live speech demo</h1>
+      </div>
+      <div class="pure-u-1-2">
+	<div class="top-box">
+	  <form class="pure-form">
+	    <label>Press "Start" and speak:
+	      <button id="startBtn">Start</button>
+	      <button id="stopBtn">Stop</button>
+	      <span id="recording-indicator" style="border-radius: 10px; -moz-border-radius: 10px; -webkit-border-radius: 10px; width: 20px; height: 20px; background: red;"></span>
+	    </label>
+	  </form>
+	</div>
+      </div>	      
+      <div class="pure-u-1-2">
+	<div class="top-box">
+	  <div>Recognition output:</div>
+	  <div id="output" style="height:150px;overflow:auto;" >
+	  </div>
+	</div>
+      </div>
+      <div class="pure-u-1">
+	<div class="grammar-box">
+	  <form class="pure-form">
+	    <label>Grammar:
+	      <select id="grammars"></select>
+	    </label>
+	    <textarea id="jsgf" class="pure-input-1">
+	    </textarea>
+	  </form>
+	</div>
+      </div>
+      <div class="pure-u-1 status-bar" id="status-bar">
+	<div id="current-status">Loading page</div>
+      </div>
+    </div>
+  </body>
+</html>
