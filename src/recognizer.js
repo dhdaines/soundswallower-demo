@@ -11,6 +11,7 @@ registerWebWorker()
     .operation("addWords", addWords)
     .operation("loadDict", loadDict)
     .operation("setGrammar", setGrammar)
+    .operation("setJSGF", setJSGF)
     .operation("loadGrammar", loadGrammar)
     .operation("start", start)
     .operation("stop", stop)
@@ -73,6 +74,12 @@ async function setGrammar(grammar) {
     let fsg = recognizer.create_fsg("_default",
 				    grammar.start, grammar.end,
 				    grammar.transitions);
+    await recognizer.set_fsg(fsg);
+    fsg.delete();
+}
+
+async function setJSGF(jsgf_string) {
+    let fsg = recognizer.parse_jsgf(jsgf_string);
     await recognizer.set_fsg(fsg);
     fsg.delete();
 }
