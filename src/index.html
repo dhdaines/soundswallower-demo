@@ -14,8 +14,9 @@
 	<div class="top-box">
 	  <form class="pure-form">
 	    <label>Press "Start" and speak:
-	      <button id="startBtn">Start</button>
-	      <button id="stopBtn">Stop</button>
+	      <!-- type="button" is needed to stop the page reloading, WTF HTML5 -->
+	      <button type="button" id="startBtn">Start</button>
+	      <button type="button"  id="stopBtn">Stop</button>
 	      <span id="recording-indicator" style="border-radius: 10px; -moz-border-radius: 10px; -webkit-border-radius: 10px; width: 20px; height: 20px; background: red;"></span>
 	    </label>
 	  </form>
