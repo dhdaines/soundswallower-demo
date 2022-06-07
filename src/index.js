@@ -129,7 +129,7 @@ window.onload = async function() {
 	    displayRecording(false);
 	}
 	try {
-	    await recognizer.exec("setGrammar", jsgfArea.value);
+	    await recognizer.exec("setJSGF", jsgfArea.value);
 	    updateStatus("Updated grammar");
 	}
 	catch (e) {
