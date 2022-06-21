@@ -1,6 +1,7 @@
 #JSGF V1.0;
 grammar pizza;
-public <order> = [<greeting>] [<want>] [<quantity>] [<size>] [<style>]
+public <orders> = <order> (and <order>)*;
+<order> = [<greeting>] [<want>] [<quantity>] [<size>] [<style>]
        [(pizza | pizzas)] [<toppings>];
 <greeting> = hi | hello | yo | howdy;
 <want> = i want | gimme | give me | i'd like to order | order | i wanna;
