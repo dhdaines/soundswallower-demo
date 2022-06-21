@@ -34,7 +34,11 @@ const config = {
 		// And copy the model files too.  FIXME: Not sure how
 		// this will work with require("soundswallower/model")
 		{ from: modelDir,
-		  to: "model"},
+		  to: "model",
+		  globOptions: {
+		      ignore: ["**/fr-fr", "**/mdef.txt"],
+		  },
+		},
 	    ],
 	}),
     ],
