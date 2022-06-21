@@ -7,8 +7,6 @@
 require("purecss");
 require("./index.css");
 
-const WebworkerPromise = require("webworker-promise");
-
 // Wait 1s after input to update grammar
 const INPUT_TIMEOUT = 1000;
 
@@ -19,7 +17,7 @@ var grammars = {Pizza: require("./pizza.gram"),
 var dicts = {Cities: require("./cities.dict")};
 
 // These will be initialized later
-var outputContainer, context, ssjs, recognizer, media_source, worklet_node;
+var outputContainer, context, ssjs, decoder, media_source, worklet_node;
 // Only when both recorder and recognizer do we have a ready application
 var isRecorderReady = false;
 var isRecognizerReady = false;
@@ -30,18 +28,18 @@ var recording = false;
 function updateHyp(hyp) {
     if (outputContainer)
 	outputContainer.innerHTML = hyp;
-};
+}
 
 // This updates the UI when the app might get ready
 function updateUI() {
     if (isRecorderReady && isRecognizerReady)
 	startBtn.disabled = stopBtn.disabled = false;
-};
+}
 
 // This is just a logging window where we display the status
 function updateStatus(newStatus) {
     document.getElementById('current-status').innerHTML = newStatus;
-};
+}
 
 // A not-so-great recording indicator
 function displayRecording(display) {
@@ -50,18 +48,35 @@ function displayRecording(display) {
     else
 	document.getElementById('recording-indicator').innerHTML = "";
     recording = display;
-};
+}
 
 // This adds words to the recognizer. When it calls back, we are ready
 async function feedWords() {
-    for (const name in dicts) {
-	await recognizer.exec("loadDict", dicts[name]);
+    for (const dict_url of dicts) {
+	let response = await fetch(dict_url);
+	if (response.ok) {
+	    let dict_string = await response.text();
+	    let re = /^(\S+)\s+(.*)$/mg;
+	    for (const m of dict_string.trim().matchAll(re)) {
+		// Fancy way to tell if this is the last line
+		let end = m.index + m[0].length;
+		let rv = await decoder.add_word(m[1], m[2],
+						(end == dict_string.length));
+		if (rv == -1)
+		    throw new Error("Failed to add word "
+				    + m[1] + " with pronunciation " + m[2]);
+	    }
+	}
+	else
+	    throw new Error("Failed to fetch " + dict_url + " :"
+			    + response.statusText);
     }
-};
+}
 
-// When the page is loaded, we spawn a new recognizer worker and
-// call getUserMedia to request access to the microphone
 window.onload = async function() {
+    // Load the WASM module
+    ssjs = await require("soundswallower")();
+
     // Wiring JavaScript to the UI
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
@@ -112,10 +127,11 @@ window.onload = async function() {
     }
     updateStatus("Initializing speech recognizer");
     try {
-	recognizer = new WebworkerPromise(
-	    new Worker(new URL("./recognizer.js", import.meta.url)));
-	await recognizer.exec("initialize",
-			      {loglevel: "DEBUG", samprate: context.sampleRate});
+	decoder = new ssjs.Decoder({
+	    hmm: "model/en-us", /* Use relative path for deployment in subdir */
+	    loglevel: "INFO",
+	    samprate: context.sampleRate});
+	await decoder.initialize();
 	await feedWords();
     }
     catch (e) {
@@ -125,11 +141,13 @@ window.onload = async function() {
 	var was_recording;
 	if (recording) {
 	    was_recording = true;
-	    await recognizer.exec("stop");
+	    await decoder.stop();
 	    displayRecording(false);
 	}
 	try {
-	    await recognizer.exec("setJSGF", jsgfArea.value);
+	    const fsg = decoder.parse_jsgf(jsgfArea.value);
+	    await decoder.set_fsg(fsg);
+	    fsg.delete();
 	    updateStatus("Updated grammar");
 	}
 	catch (e) {
@@ -137,7 +155,7 @@ window.onload = async function() {
 	}
 	if (was_recording) {
 	    try {
-		await recognizer.exec("start");
+		await decoder.start();
 	    }
 	    catch (e) {
 		updateStatus("Error starting recognition: " + e.message);
@@ -172,9 +190,8 @@ window.onload = async function() {
 	    return true;
 	}
 	try {
-	    await recognizer.exec("process", event.data,
-				  [event.data.buffer]);
-	    let hyp = await recognizer.exec("getHyp")
+	    await decoder.process(event.data);
+	    let hyp = await decoder.get_hyp();
 	    if (hyp !== undefined)
 		updateHyp(hyp);	    
 	}
@@ -185,10 +202,10 @@ window.onload = async function() {
     };
     startBtn.onclick = async function() {
 	if (recording) {
-	    await recognizer.exec("stop");
+	    await decoder.stop();
 	}
 	try {
-	    await recognizer.exec("start");
+	    await decoder.start();
 	}
 	catch (e) {
 	    updateStatus("Error starting recognition: " + e.message);
@@ -202,7 +219,8 @@ window.onload = async function() {
 	if (!recording)
 	    return;
 	try {
-	    const { hyp, hypseg } = await recognizer.exec("stop");
+	    await decoder.stop();
+	    const hyp = decoder.get_hyp();
 	    if (hyp !== undefined)
 		updateHyp(hyp);
 	    displayRecording(false);
@@ -214,5 +232,5 @@ window.onload = async function() {
     };
     startBtn.disabled = false;
     stopBtn.disabled = false;
-};
+}
 
