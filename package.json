@@ -1,5 +1,5 @@
 {
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Simple SoundSwallower demo app",
   "name": "soundswallower-demo",
   "scripts": {
@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "purecss": "^2.1.0",
-    "soundswallower": "^0.2.0",
+    "soundswallower": "^0.3.0",
     "webworker-promise": "^0.5.0"
   }
 }
