@@ -114,19 +114,16 @@ window.onload = async function() {
         await context.suspend();
         const stream = await navigator.mediaDevices.getUserMedia({audio: true});
         media_source = context.createMediaStreamSource(stream);
-        const merger = context.createChannelMerger(media_source.numberOfOutputs);
-        media_source.connect(merger);
         const workletURL = new URL("./soundswallower-processor.js", import.meta.url);
         await context.audioWorklet.addModule(workletURL);
         worklet_node = new AudioWorkletNode(context, 'soundswallower-processor');
-        merger.connect(worklet_node).connect(context.destination);
+        media_source.connect(worklet_node).connect(context.destination);
         isRecorderReady = true;
         updateUI();
         updateStatus("Audio recorder ready");
     }
     catch (e) {
         updateStatus("Error initializing Web Audio browser: " + e.message);
-        return false;
     }
     updateStatus("Initializing speech recognizer");
     try {
@@ -170,8 +167,12 @@ window.onload = async function() {
         }
     }
     // Load the current grammar
-    await updateGrammar();
-    updateStatus("Speech recognizer ready");
+    if (await updateGrammar()) {
+        updateStatus("Speech recognizer ready");
+    }
+    else {
+        return false;
+    }
 
     // Set up select to update grammar
     selectTag.addEventListener("change", async function() {
@@ -242,4 +243,3 @@ window.onload = async function() {
     startBtn.disabled = false;
     stopBtn.disabled = false;
 }
-
