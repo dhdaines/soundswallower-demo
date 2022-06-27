@@ -7,6 +7,8 @@
 require("purecss");
 require("./index.css");
 
+const VAD = require("./vad.js");
+
 // Wait 1s after input to update grammar
 const INPUT_TIMEOUT = 1000;
 
@@ -17,24 +19,14 @@ var grammars = {Pizza: require("./pizza.gram"),
 var dicts = {Cities: require("./cities.dict")};
 
 // These will be initialized later
-var outputContainer, jsgfArea;
-var context, ssjs, decoder, media_source, worklet_node;
-// Only when both recorder and recognizer do we have a ready application
-var isRecorderReady = false;
-var isRecognizerReady = false;
-// Do not feed data to the recorder if not ready
-var recording = false;
+var context, ssjs, vader, decoder, media_source, worklet_node;
+
+// Has ASR been started? FIXME: Should go in ssjs.Decoder
+var decoding = false;
 
 // To display the hypothesis sent by the recognizer
 function updateHyp(hyp) {
-    if (outputContainer)
-        outputContainer.innerHTML = hyp;
-}
-
-// This updates the UI when the app might get ready
-function updateUI() {
-    if (isRecorderReady && isRecognizerReady)
-        startBtn.disabled = stopBtn.disabled = false;
+    document.getElementById("output").innerHTML = hyp;
 }
 
 // This is just a logging window where we display the status
@@ -44,11 +36,15 @@ function updateStatus(newStatus) {
 
 // A not-so-great recording indicator
 function displayRecording(display) {
-    if (display)
+    if (display) {
         document.getElementById('recording-indicator').innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
-    else
+        document.getElementById('stopBtn').disabled = false;
+        updateHyp("");
+    }
+    else {
         document.getElementById('recording-indicator').innerHTML = "";
-    recording = display;
+        document.getElementById('stopBtn').disabled = true;
+    }
 }
 
 // This adds words to the recognizer. When it calls back, we are ready
@@ -75,13 +71,13 @@ async function feedWords() {
 }
 
 async function updateGrammar() {
-    var was_recording;
-    if (recording) {
-        was_recording = true;
+    if (decoding) {
         await decoder.stop();
-        displayRecording(false);
+        decoding = false;
     }
+    displayRecording(false);
     try {
+        const jsgfArea = document.getElementById('jsgf');
         const fsg = decoder.parse_jsgf(jsgfArea.value);
         await decoder.set_fsg(fsg);
         fsg.delete();
@@ -91,15 +87,19 @@ async function updateGrammar() {
         updateStatus("Failed to set grammar: " + e.message);
         throw e;
     }
-    if (was_recording) {
-        try {
-            await decoder.start();
-        }
-        catch (e) {
-            updateStatus("Error starting recognition: " + e.message);
-            throw e;
-        }
-        displayRecording(true);
+}
+
+async function loadGrammar(name) {
+    let grammar_url = grammars[name];
+    let response = await fetch(grammar_url);
+    if (response.ok) {
+        let jsgf_string = await response.text();
+        const jsgfArea = document.getElementById('jsgf');
+        jsgfArea.value = jsgf_string;
+    }
+    else {
+        updateStatus("Failed to fetch " + grammar_url + " :"
+                     + response.statusText);
     }
 }
 
@@ -110,6 +110,7 @@ window.onload = async function() {
     // Wiring JavaScript to the UI
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
+    const jsgfArea = document.getElementById('jsgf');
     startBtn.disabled = true;
     stopBtn.disabled = true;
 
@@ -120,23 +121,22 @@ window.onload = async function() {
         newElt.innerHTML = name;
         selectTag.appendChild(newElt);
     }                          
-    jsgfArea = document.getElementById('jsgf');
-    async function loadGrammar(name) {
-        let grammar_url = grammars[name];
-        let response = await fetch(grammar_url);
-        if (response.ok) {
-            let jsgf_string = await response.text();
-            jsgfArea.value = jsgf_string;
-        }
-        else {
-            updateStatus("Failed to fetch " + grammar_url + " :"
-                         + response.statusText);
-        }
-    }
     // Load the first grammar
     await loadGrammar(selectTag.options[selectTag.selectedIndex].innerText);
+    // Set up handler to reload grammar when modified
+    let timeout = null;
+    jsgfArea.addEventListener("input", () => {
+        clearTimeout(timeout);
+        timeout = setTimeout(updateGrammar, INPUT_TIMEOUT);
+    });
+    // Set up select to update grammar
+    selectTag.addEventListener("change", async function() {
+        var name = this.options[this.selectedIndex].innerText;
+        await loadGrammar(name);
+        // Won't actually trigger the input event so update it here
+        await updateGrammar();
+    });
 
-    outputContainer = document.getElementById("output");
     updateStatus("Initializing web audio, waiting for approval to access the microphone");
     try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -153,9 +153,7 @@ window.onload = async function() {
                 channel: 0,
             }
         });
-        media_source.connect(worklet_node).connect(context.destination);
-        isRecorderReady = true;
-        updateUI();
+        media_source.connect(worklet_node);
         updateStatus("Audio recorder ready");
     }
     catch (e) {
@@ -167,7 +165,6 @@ window.onload = async function() {
     try {
         decoder = new ssjs.Decoder({
             hmm: "model/en-us", /* Use relative path for deployment in subdir */
-            loglevel: "INFO",
             samprate: context.sampleRate});
         await decoder.initialize();
         await feedWords();
@@ -179,25 +176,26 @@ window.onload = async function() {
     }
     updateStatus("Speech recognizer ready");
 
-    // Set up select to update grammar
-    selectTag.addEventListener("change", async function() {
-        var name = this.options[this.selectedIndex].innerText;
-        await loadGrammar(name);
-        // Won't actually trigger the input event so update it here
-        await updateGrammar();
-    });
-    // Set up handler to reload grammar when modified
-    let timeout = null;
-    jsgfArea.addEventListener("input", () => {
-        clearTimeout(timeout);
-        timeout = setTimeout(updateGrammar, INPUT_TIMEOUT);
-    });
+    // Handle VAD and speech input
+    vader = new VAD({context: context, source: worklet_node,
+                     voice_start: async () => {
+                         if (decoding)
+                             return;
+                         try {
+                             await decoder.start();
+                             decoding = true;
+                         }
+                         catch (e) {
+                             updateStatus("Error starting recognition: " + e.message);
+                             throw e;
+                         }
+                     },});
     worklet_node.port.onmessage = async function(event) {
-        if (!recording)
+        if (!decoding)
             return true;
         if (event.data == "ERROR") {
             updateStatus("AudioWorkletNode got disconnected somehow?!?!?!");
-            worklet_node = new AudioWorkletNode(context, 'soundswallower-processor');
+            worklet_node = new AudioWorkletNode(context, 'getaudio-processor');
             media_source.connect(worklet_node).connect(context.destination);
             return true;
         }
@@ -214,15 +212,10 @@ window.onload = async function() {
         return true;
     };
     startBtn.onclick = async function() {
-        if (recording) {
+        if (decoding) {
             await decoder.stop();
-        }
-        try {
-            await decoder.start();
-        }
-        catch (e) {
-            updateStatus("Error starting recognition: " + e.message);
-            throw e;
+            decoding = false;
+            vader.voice_start();
         }
         await context.resume();
         displayRecording(true);
@@ -230,21 +223,21 @@ window.onload = async function() {
     };
     stopBtn.onclick = async function() {
         await context.suspend();
-        if (!recording)
+        if (!decoding)
             return;
         try {
             await decoder.stop();
             const hyp = decoder.get_hyp();
             if (hyp !== undefined)
                 updateHyp(hyp);
-            displayRecording(false);
+            decoding = false;
         }
         catch (e) {
             updateStatus("Error stopping recognition: " + e.message);
             throw e;
         }
+        displayRecording(false);
         return true;
     };
     startBtn.disabled = false;
-    stopBtn.disabled = false;
 }
