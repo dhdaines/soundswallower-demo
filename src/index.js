@@ -17,7 +17,8 @@ var grammars = {Pizza: require("./pizza.gram"),
 var dicts = {Cities: require("./cities.dict")};
 
 // These will be initialized later
-var outputContainer, context, ssjs, decoder, media_source, worklet_node;
+var outputContainer, jsgfArea;
+var context, ssjs, decoder, media_source, worklet_node;
 // Only when both recorder and recognizer do we have a ready application
 var isRecorderReady = false;
 var isRecognizerReady = false;
@@ -73,6 +74,35 @@ async function feedWords() {
     }
 }
 
+async function updateGrammar() {
+    var was_recording;
+    if (recording) {
+        was_recording = true;
+        await decoder.stop();
+        displayRecording(false);
+    }
+    try {
+        const fsg = decoder.parse_jsgf(jsgfArea.value);
+        await decoder.set_fsg(fsg);
+        fsg.delete();
+        updateStatus("Updated grammar");
+    }
+    catch (e) {
+        updateStatus("Failed to set grammar: " + e.message);
+        throw e;
+    }
+    if (was_recording) {
+        try {
+            await decoder.start();
+        }
+        catch (e) {
+            updateStatus("Error starting recognition: " + e.message);
+            throw e;
+        }
+        displayRecording(true);
+    }
+}
+
 window.onload = async function() {
     // Load the WASM module
     ssjs = await require("soundswallower")();
@@ -90,7 +120,7 @@ window.onload = async function() {
         newElt.innerHTML = name;
         selectTag.appendChild(newElt);
     }                          
-    var jsgfArea = document.getElementById('jsgf');
+    jsgfArea = document.getElementById('jsgf');
     async function loadGrammar(name) {
         let grammar_url = grammars[name];
         let response = await fetch(grammar_url);
@@ -124,7 +154,9 @@ window.onload = async function() {
     }
     catch (e) {
         updateStatus("Error initializing Web Audio browser: " + e.message);
+        return false;
     }
+
     updateStatus("Initializing speech recognizer");
     try {
         decoder = new ssjs.Decoder({
@@ -133,46 +165,13 @@ window.onload = async function() {
             samprate: context.sampleRate});
         await decoder.initialize();
         await feedWords();
+        await updateGrammar();
     }
     catch (e) {
         updateStatus("Error initializing speech recognizer: " + e.message);
         return false;
     }
-    async function updateGrammar() {
-        var was_recording;
-        if (recording) {
-            was_recording = true;
-            await decoder.stop();
-            displayRecording(false);
-        }
-        try {
-            const fsg = decoder.parse_jsgf(jsgfArea.value);
-            await decoder.set_fsg(fsg);
-            fsg.delete();
-            updateStatus("Updated grammar");
-        }
-        catch (e) {
-                updateStatus("Failed to set grammar: " + e.message);
-            return false;
-        }
-        if (was_recording) {
-            try {
-                await decoder.start();
-            }
-            catch (e) {
-                updateStatus("Error starting recognition: " + e.message);
-                return false;
-            }
-            displayRecording(true);
-        }
-    }
-    // Load the current grammar
-    if (await updateGrammar()) {
-        updateStatus("Speech recognizer ready");
-    }
-    else {
-        return false;
-    }
+    updateStatus("Speech recognizer ready");
 
     // Set up select to update grammar
     selectTag.addEventListener("change", async function() {
@@ -204,7 +203,7 @@ window.onload = async function() {
         }
         catch (e) {
             updateStatus("Error processing data: " + e.message);
-            return false;
+            throw e;
         }
         return true;
     };
@@ -217,7 +216,7 @@ window.onload = async function() {
         }
         catch (e) {
             updateStatus("Error starting recognition: " + e.message);
-            return false;
+            throw e;
         }
         await context.resume();
         displayRecording(true);
@@ -236,7 +235,7 @@ window.onload = async function() {
         }
         catch (e) {
             updateStatus("Error stopping recognition: " + e.message);
-            return false;
+            throw e;
         }
         return true;
     };
