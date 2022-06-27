@@ -1,3 +1,4 @@
+"use strict";
 /**
  * Processor which buffers one channel of input and sends it back to
  * the main thread in reasonably-sized chunks.
@@ -29,6 +30,10 @@ class GetAudioProcessor extends AudioWorkletProcessor {
             this.port.postMessage("ERROR");
             return false;
         }
+        // Pass through data
+        for (const idx in outputs)
+            for (const c in outputs[idx])
+                outputs[idx][c].set(inputs[idx][c]);
         // This is always 128, but whatever.
         let input_length = input[this.channel].length;
         if (this.pos + input_length > 2048)
