@@ -144,9 +144,15 @@ window.onload = async function() {
         await context.suspend();
         const stream = await navigator.mediaDevices.getUserMedia({audio: true});
         media_source = context.createMediaStreamSource(stream);
-        const workletURL = new URL("./soundswallower-processor.js", import.meta.url);
+        const workletURL = new URL("./processors.js", import.meta.url);
         await context.audioWorklet.addModule(workletURL);
-        worklet_node = new AudioWorkletNode(context, 'soundswallower-processor');
+        worklet_node = new AudioWorkletNode(context, 'getaudio-processor', {
+            /* Verbose Web Audio junk... */
+            processorOptions: {
+                bufferSize: 2048,
+                channel: 0,
+            }
+        });
         media_source.connect(worklet_node).connect(context.destination);
         isRecorderReady = true;
         updateUI();
