@@ -1,6 +1,7 @@
 class SoundSwallowerProcessor extends AudioWorkletProcessor {
-    // Mix-down the data and accumulate it a bit (128 samples is much
-    // too short) before sending back to the main thread
+    /* Just accumulate data (128 samples is much too short) before sending
+     * it back to the main thread.  Otherwise do nothing interesting
+     * (perhaps we should do recognition here, perhaps not). */
     constructor() {
 	super(...arguments);
 	this.buf = new Float32Array(2048);
@@ -21,10 +22,8 @@ class SoundSwallowerProcessor extends AudioWorkletProcessor {
 	}
 	if (this.pos + input[0].length > 2048)
 	    this.flush();
-	for (const i in input[0]) {
-	    const sample = input[0][i] + input[1][i];
-	    this.buf[this.pos++] = sample;
-	}
+        this.buf.set(input[0], this.pos);
+        this.pos += input[0].length;
 	// we don't actually produce output... but we want to live!
 	return true;
     }
