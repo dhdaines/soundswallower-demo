@@ -66,12 +66,27 @@ parts of the `config` variable in particular:
 
 ## Implementation
 
-Because SoundSwallower still relies on Emscripten's filesystem
-emulation to load model files, it is necessary to run it within a web
-worker.  We use
-[webworker-promise](https://github.com/kwolfy/webworker-promise) to
-make the code more readable.
-
 The audio capture is implemented in a separate worker, an
 `AudioWorkletNode` to be precise, because ... well, because, for the
-moment.  It doesn't seem possible to get plain old PCM audio any other way.
+moment, it doesn't seem possible to get plain old PCM audio any other
+way.  This seems to be the [general consensus among
+developers](https://github.com/microphone-stream/microphone-stream/issues/47),
+as the Web Audio API is not at all designed for this use case, but the
+[MediaStream recording
+API](https://developer.mozilla.org/en-US/docs/Web/API/MediaStream_Recording_API),
+which would be the logical choice, isn't really either.
+
+I might switch this to use
+https://github.com/microphone-stream/microphone-stream at some point
+as it would make the code a bit clearer.
+
+By contrast, we do the speech recognition in the main thread.  For the
+simple grammars in the demo, it should be more than fast enough.
+
+At the moment there is slightly bogus voice activity detection being
+done before the recognition will actually start, which implies some
+redundant audio processing, and also a "deprecated" warning from
+Chrome, for an API that really shouldn't have been deprecated, because
+it cannot be replaced by Audio Worklets for this use case.  A future
+version of SoundSwallower will provide a more efficient and hopefully
+more accurate method.
