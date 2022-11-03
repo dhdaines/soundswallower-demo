@@ -26,6 +26,6 @@
   },
   "dependencies": {
     "purecss": "^2.1.0",
-    "soundswallower": "^0.3.0"
+    "soundswallower": "^0.4.0"
   }
 }

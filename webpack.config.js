@@ -37,7 +37,7 @@ const config = {
 		{ from: modelDir,
 		  to: "model",
 		  globOptions: {
-		      ignore: ["**/fr-fr", "**/mdef", "**/mdef.txt"],
+		      ignore: ["**/fr-fr", "**/mdef.txt"],
 		  },
 		},
 	    ],

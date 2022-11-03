@@ -78,9 +78,7 @@ async function updateGrammar() {
     displayRecording(false);
     try {
         const jsgfArea = document.getElementById('jsgf');
-        const fsg = decoder.parse_jsgf(jsgfArea.value);
-        await decoder.set_fsg(fsg);
-        fsg.delete();
+        await decoder.set_jsgf(jsgfArea.value);
         updateStatus("Updated grammar");
     }
     catch (e) {
@@ -163,9 +161,7 @@ window.onload = async function() {
 
     updateStatus("Initializing speech recognizer");
     try {
-        decoder = new ssjs.Decoder({
-            hmm: "model/en-us", /* Use relative path for deployment in subdir */
-            samprate: context.sampleRate});
+        decoder = new ssjs.Decoder({samprate: context.sampleRate});
         await decoder.initialize();
         await feedWords();
         await updateGrammar();
@@ -177,19 +173,20 @@ window.onload = async function() {
     updateStatus("Speech recognizer ready");
 
     // Handle VAD and speech input
-    vader = new VAD({context: context, source: worklet_node,
-                     voice_start: async () => {
-                         if (decoding)
-                             return;
-                         try {
-                             await decoder.start();
-                             decoding = true;
-                         }
-                         catch (e) {
-                             updateStatus("Error starting recognition: " + e.message);
-                             throw e;
-                         }
-                     },});
+    vader = new VAD({
+        context: context, source: worklet_node,
+        voice_start: async () => {
+            if (decoding)
+                return;
+            try {
+                await decoder.start();
+                decoding = true;
+            }
+            catch (e) {
+                updateStatus("Error starting recognition: " + e.message);
+                throw e;
+            }
+        },});
     worklet_node.port.onmessage = async function(event) {
         if (!decoding)
             return true;
