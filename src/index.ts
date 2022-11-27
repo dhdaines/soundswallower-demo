@@ -36,10 +36,14 @@ class DemoApp {
 
     context: AudioContext;
     worklet_node: AudioWorkletNode;
+    media_source: MediaStreamAudioSourceNode;
     decoder: Decoder;
     endpointer: Endpointer;
     frame_size: number;
     decoding: boolean = false;
+
+    frame: Float32Array;
+    pos: number = 0;
 
     updateHyp(hyp: string) {
         this.outputBox.innerHTML = hyp;
@@ -149,22 +153,16 @@ class DemoApp {
 
     async setupAudio() {
         this.updateStatus("Initializing web audio, waiting for approval to access the microphone");
-        this.context = new AudioContext();
+        this.context = new AudioContext({ sampleRate: 8000 });
         await this.context.suspend();
         const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-        const media_source = this.context.createMediaStreamSource(stream);
+        this.media_source = this.context.createMediaStreamSource(stream);
         const workletURL = new URL("./processor.js", import.meta.url);
         await this.context.audioWorklet.addModule(workletURL);
         this.endpointer = new soundswallower.Endpointer(this.context.sampleRate);
-        this.frame_size = this.endpointer.get_frame_size();
-        this.worklet_node = new AudioWorkletNode(this.context, 'getaudio-processor', {
-            /* Verbose Web Audio junk... */
-            processorOptions: {
-                bufferSize: this.frame_size,
-                channel: 0,
-            }
-        });
-        media_source.connect(this.worklet_node);
+        this.frame = new Float32Array(this.endpointer.get_frame_size());
+        this.worklet_node = new AudioWorkletNode(this.context, 'getaudio-processor');
+        this.media_source.connect(this.worklet_node);
         this.updateStatus("Audio recorder ready");
     }
 
@@ -177,40 +175,52 @@ class DemoApp {
         this.updateStatus("Speech recognizer ready");
         this.worklet_node.port.onmessage =
             async (event: MessageEvent) => this.processAudio(event);
+    }
+
+    setupButtons() {
         this.startButton.onclick = async () => {
-            if (this.decoding) {
-                await this.decoder.stop();
-                this.decoding = false;
-            }
             await this.context.resume();
             this.displayRecording(true);
+            this.startButton.disabled = true;
+            this.stopButton.disabled = false;
             return true;
         };
         this.stopButton.onclick = async () => {
             await this.context.suspend();
-            if (!this.decoding)
-                return false;
-            try {
+            if (this.decoding) {
                 await this.decoder.stop();
+                this.decoding = false;
                 const hyp = this.decoder.get_hyp();
                 if (hyp !== undefined)
                     this.updateHyp(hyp);
-                this.decoding = false;
-            }
-            catch (e) {
-                this.updateStatus("Error stopping recognition: " + e.message);
-                throw e;
             }
             this.displayRecording(false);
+            this.startButton.disabled = false;
+            this.stopButton.disabled = true;
             return true;
         };
         this.startButton.disabled = false;
     }
 
     async processAudio(event: MessageEvent) {
+        const inbuf = event.data;
+        let end;
+        if (this.pos + inbuf.length >= this.frame.length) {
+            const start = inbuf.subarray(0, this.frame.length - this.pos);
+            end = inbuf.subarray(this.frame.length - this.pos);
+            this.frame.set(start, this.pos);
+        }
+        else {
+            this.frame.set(inbuf, this.pos);
+            this.pos += inbuf.length;
+            return true;
+        }
+        
         try {
             const prev_in_speech = this.endpointer.get_in_speech();
-            const speech = this.endpointer.process(event.data);
+            const speech = this.endpointer.process(this.frame);
+            this.frame.set(end);
+            this.pos = end.length;
             if (speech !== null) {
                 if (!prev_in_speech) {
                     await this.decoder.start();
@@ -248,4 +258,5 @@ window.onload = async function() {
         app.updateStatus("Error initializing speech recognition: " + e.message);
         throw(e);
     }
+    app.setupButtons();
 }
