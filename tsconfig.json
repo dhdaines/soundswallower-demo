@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+        "outDir": "./docs/",
+        "sourceMap": true,
+        "noImplicitAny": true,
+        "module": "es2020",
+        "target": "es5",
+        "allowJs": true,
+        "moduleResolution": "node"
+    }
+}
