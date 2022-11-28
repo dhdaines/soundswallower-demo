@@ -6,6 +6,11 @@ import soundswallower_factory, {
     Endpointer,
     SoundSwallowerModule,
 } from "soundswallower";
+import {
+    AudioContext,
+    AudioWorkletNode,
+    MediaStreamAudioSourceNode
+} from "standardized-audio-context";
 
 var soundswallower: SoundSwallowerModule;
 
@@ -35,8 +40,8 @@ class DemoApp {
     statusBox: HTMLElement;
 
     context: AudioContext;
-    worklet_node: AudioWorkletNode;
-    media_source: MediaStreamAudioSourceNode;
+    worklet_node: AudioWorkletNode<AudioContext>;
+    media_source: MediaStreamAudioSourceNode<AudioContext>;
     decoder: Decoder;
     endpointer: Endpointer;
     frame_size: number;
@@ -158,7 +163,7 @@ class DemoApp {
         const stream = await navigator.mediaDevices.getUserMedia({audio: true});
         this.media_source = this.context.createMediaStreamSource(stream);
         const workletURL = new URL("./processor.js", import.meta.url);
-        await this.context.audioWorklet.addModule(workletURL);
+        await this.context.audioWorklet.addModule(workletURL.toString());
         this.endpointer = new soundswallower.Endpointer(this.context.sampleRate);
         this.frame = new Float32Array(this.endpointer.get_frame_size());
         this.worklet_node = new AudioWorkletNode(this.context, 'getaudio-processor');
