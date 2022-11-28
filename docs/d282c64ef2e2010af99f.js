@@ -1,0 +1,1 @@
+"use strict";class GetAudioProcessor extends AudioWorkletProcessor{process(s,o,e){const r=s[0];if(0==r.length)return console.log("WTF WebAudio, input has length 0"),!0;const t=r[0];return this.port.postMessage(t),!0}}registerProcessor("getaudio-processor",GetAudioProcessor);
