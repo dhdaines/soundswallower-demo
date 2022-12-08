@@ -1,5 +1,5 @@
 {
-  "version": "0.3.0",
+  "version": "0.4.3",
   "description": "Simple SoundSwallower demo app",
   "name": "soundswallower-demo",
   "scripts": {
@@ -13,6 +13,7 @@
   "devDependencies": {
     "@babel/core": "^7.20.2",
     "@babel/preset-env": "^7.20.2",
+    "@types/audiobuffer-to-wav": "^1.0.2",
     "autoprefixer": "^10.4.13",
     "babel-loader": "^8.3.0",
     "copy-webpack-plugin": "^10.2.4",
@@ -27,8 +28,9 @@
     "webpack-dev-server": "^4.11.1"
   },
   "dependencies": {
+    "audiobuffer-to-wav": "^1.0.0",
     "purecss": "^2.2.0",
-    "soundswallower": "^0.4.1",
+    "soundswallower": "^0.4.2",
     "standardized-audio-context": "^25.3.35"
   }
 }

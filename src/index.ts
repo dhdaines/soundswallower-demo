@@ -12,6 +12,8 @@ import {
     MediaStreamAudioSourceNode
 } from "standardized-audio-context";
 
+import audioBufferToWav from "audiobuffer-to-wav";
+
 var soundswallower: SoundSwallowerModule;
 
 require("purecss");
@@ -38,6 +40,7 @@ class DemoApp {
     recordingIndicator: HTMLElement;
     outputBox: HTMLElement;
     statusBox: HTMLElement;
+    downloadLink: HTMLAnchorElement;
 
     context: AudioContext;
     worklet_node: AudioWorkletNode<AudioContext>;
@@ -48,6 +51,7 @@ class DemoApp {
     decoding: boolean = false;
 
     frame: Float32Array;
+    speech: Array<Float32Array> = [];
     pos: number = 0;
 
     updateHyp(hyp: string) {
@@ -129,7 +133,8 @@ class DemoApp {
         this.recordingIndicator = document.getElementById('recording-indicator');
         this.outputBox = document.getElementById("output");
         this.statusBox = document.getElementById("current-status");
-
+        this.downloadLink = document.getElementById("download") as HTMLAnchorElement;
+        
         this.startButton.disabled = true;
         this.stopButton.disabled = true;
 
@@ -142,18 +147,6 @@ class DemoApp {
         }                          
         // Load the first grammar's text into the JSGF area
         this.loadGrammar(this.selectTag.options[this.selectTag.selectedIndex].innerText);
-        // Set up handler to reload grammar when modified
-        let timeout: number;
-        this.jsgfArea.addEventListener("input", () => {
-            window.clearTimeout(timeout);
-            timeout = window.setTimeout(() => this.updateGrammar(), INPUT_TIMEOUT);
-        });
-        // Set up handler to load new grammar from menu
-        this.selectTag.addEventListener("change", async () => {
-            var name = this.selectTag.options[this.selectTag.selectedIndex].innerText;
-            await this.loadGrammar(name);
-            await this.updateGrammar();
-        });
     }
 
     async setupAudio() {
@@ -182,15 +175,45 @@ class DemoApp {
             async (event: MessageEvent) => this.processAudio(event);
     }
 
-    setupButtons() {
-        this.startButton.onclick = async () => {
+    updateDownload() {
+        let nsamp = 0;
+        for (const block of this.speech)
+            nsamp += block.length;
+        const speech_buf = this.context.createBuffer(1, nsamp, this.context.sampleRate);
+        const channel = speech_buf.getChannelData(0);
+        let pos = 0;
+        for (const block of this.speech) {
+            channel.set(block, pos);
+            pos += block.length;
+        }
+        const wav = audioBufferToWav(speech_buf);
+        this.downloadLink.download = "speech.wav";
+        this.downloadLink.href = window.URL.createObjectURL(
+            new Blob([wav], {
+                type: "audio/wave"
+            }));
+        this.speech = [];
+    }
+
+    setupCallbacks() {
+        let timeout: number;
+        this.jsgfArea.addEventListener("input", () => {
+            window.clearTimeout(timeout);
+            timeout = window.setTimeout(() => this.updateGrammar(), INPUT_TIMEOUT);
+        });
+        this.selectTag.addEventListener("change", async () => {
+            var name = this.selectTag.options[this.selectTag.selectedIndex].innerText;
+            await this.loadGrammar(name);
+            await this.updateGrammar();
+        });
+        this.startButton.addEventListener("click", async () => {
             await this.context.resume();
             this.displayRecording(true);
             this.startButton.disabled = true;
             this.stopButton.disabled = false;
             return true;
-        };
-        this.stopButton.onclick = async () => {
+        });
+        this.stopButton.addEventListener("click", async () => {
             await this.context.suspend();
             if (this.decoding) {
                 await this.decoder.stop();
@@ -199,11 +222,12 @@ class DemoApp {
                 if (hyp !== undefined)
                     this.updateHyp(hyp);
             }
+            this.updateDownload();
             this.displayRecording(false);
             this.startButton.disabled = false;
             this.stopButton.disabled = true;
             return true;
-        };
+        });
         this.startButton.disabled = false;
     }
 
@@ -227,14 +251,17 @@ class DemoApp {
             this.frame.set(end);
             this.pos = end.length;
             if (speech !== null) {
+                this.speech.push(speech);
                 if (!prev_in_speech) {
                     await this.decoder.start();
                     this.decoding = true;
+                    this.updateStatus(`Speech started at ${this.endpointer.get_speech_start()}s`);
                 }
                 await this.decoder.process(speech);
                 if (!this.endpointer.get_in_speech()) {
                     await this.decoder.stop();
                     this.decoding = false;
+                    this.updateStatus(`Speech ended at ${this.endpointer.get_speech_end()}s`);
                 }
                 const hyp = await this.decoder.get_hyp();
                 if (hyp !== undefined)
@@ -263,5 +290,5 @@ window.onload = async function() {
         app.updateStatus("Error initializing speech recognition: " + e.message);
         throw(e);
     }
-    app.setupButtons();
+    app.setupCallbacks();
 }
