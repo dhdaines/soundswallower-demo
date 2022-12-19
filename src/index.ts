@@ -5,6 +5,7 @@ import soundswallower_factory, {
   Decoder,
   Endpointer,
   SoundSwallowerModule,
+  DictEntry,
 } from "soundswallower";
 import {
   AudioContext,
@@ -75,25 +76,15 @@ class DemoApp {
 
   async feedWords() {
     for (const name in DICTS) {
-      // it is not iterable... wow
       const response = await fetch(DICTS[name]);
       if (response.ok) {
         const dict_string = await response.text();
         const re = /^(\S+)\s+(.*)$/gm;
+        const words: Array<DictEntry> = [];
         let m;
-        while ((m = re.exec(dict_string.trim())) !== null) {
-          // Fancy way to tell if this is the last line
-          const end = m.index + m[0].length;
-          const rv = await this.decoder.add_word(
-            m[1],
-            m[2],
-            end == dict_string.length
-          );
-          if (rv == -1)
-            throw new Error(
-              "Failed to add word " + m[1] + " with pronunciation " + m[2]
-            );
-        }
+        while ((m = re.exec(dict_string.trim())) !== null)
+          words.push([m[1], m[2]]);
+        this.decoder.add_words(...words);
       } else
         throw new Error(
           "Failed to fetch " + DICTS[name] + " :" + response.statusText
@@ -101,14 +92,14 @@ class DemoApp {
     }
   }
 
-  async updateGrammar() {
+  updateGrammar() {
     if (this.decoding) {
-      await this.decoder.stop();
+      this.decoder.stop();
       this.decoding = false;
       this.displayRecording(false);
     }
     try {
-      await this.decoder.set_jsgf(this.jsgfArea.value);
+      this.decoder.set_grammar(this.jsgfArea.value);
       this.updateStatus("Updated grammar");
     } catch (e) {
       this.updateStatus("Failed to set grammar: " + e.message);
@@ -170,7 +161,9 @@ class DemoApp {
     this.media_source = this.context.createMediaStreamSource(stream);
     const workletURL = new URL("./processor.js", import.meta.url);
     await this.context.audioWorklet.addModule(workletURL.toString());
-    this.endpointer = new soundswallower.Endpointer(this.context.sampleRate);
+    this.endpointer = new soundswallower.Endpointer({
+      samprate: this.context.sampleRate,
+    });
     this.frame = new Float32Array(this.endpointer.get_frame_size());
     this.worklet_node = new AudioWorkletNode(
       this.context,
@@ -187,7 +180,7 @@ class DemoApp {
     });
     await this.decoder.initialize();
     await this.feedWords();
-    await this.updateGrammar();
+    this.updateGrammar();
     this.updateStatus("Speech recognizer ready");
     this.worklet_node.port.onmessage = async (event: MessageEvent) =>
       this.processAudio(event);
@@ -226,7 +219,7 @@ class DemoApp {
     this.selectTag.addEventListener("change", async () => {
       var name = this.selectTag.options[this.selectTag.selectedIndex].innerText;
       await this.loadGrammar(name);
-      await this.updateGrammar();
+      this.updateGrammar();
     });
     this.startButton.addEventListener("click", async () => {
       await this.context.resume();
@@ -238,9 +231,9 @@ class DemoApp {
     this.stopButton.addEventListener("click", async () => {
       await this.context.suspend();
       if (this.decoding) {
-        await this.decoder.stop();
+        this.decoder.stop();
         this.decoding = false;
-        const hyp = this.decoder.get_hyp();
+        const hyp = this.decoder.get_text();
         if (hyp !== undefined) this.updateHyp(hyp);
       }
       this.updateDownload();
@@ -252,7 +245,7 @@ class DemoApp {
     this.startButton.disabled = false;
   }
 
-  async processAudio(event: MessageEvent) {
+  processAudio(event: MessageEvent) {
     const inbuf = event.data;
     let end;
     if (this.pos + inbuf.length >= this.frame.length) {
@@ -273,21 +266,21 @@ class DemoApp {
       if (speech !== null) {
         this.speech.push(speech);
         if (!prev_in_speech) {
-          await this.decoder.start();
+          this.decoder.start();
           this.decoding = true;
           this.updateStatus(
             `Speech started at ${this.endpointer.get_speech_start()}s`
           );
         }
-        await this.decoder.process(speech);
+        this.decoder.process_audio(speech);
         if (!this.endpointer.get_in_speech()) {
-          await this.decoder.stop();
+          this.decoder.stop();
           this.decoding = false;
           this.updateStatus(
             `Speech ended at ${this.endpointer.get_speech_end()}s`
           );
         }
-        const hyp = await this.decoder.get_hyp();
+        const hyp = this.decoder.get_text();
         if (hyp !== undefined) this.updateHyp(hyp);
       }
     } catch (e) {
