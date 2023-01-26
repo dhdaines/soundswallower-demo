@@ -67,6 +67,10 @@ const config = {
   resolve: {
     extensions: [".tsx", ".ts", ".js"],
   },
+  performance: {
+    maxAssetSize: 3500000,
+    maxEntrypointSize: 300000,
+  },
 };
 
 module.exports = () => {
@@ -74,7 +78,6 @@ module.exports = () => {
     config.mode = "production";
   } else {
     config.mode = "development";
-    config.devtool = "eval-source-map";
   }
   return config;
 };
