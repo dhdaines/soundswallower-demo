@@ -4,7 +4,6 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CopyPlugin = require("copy-webpack-plugin");
-const modelDir = require("soundswallower/model");
 
 const isProduction = process.env.NODE_ENV == "production";
 
@@ -25,19 +24,11 @@ const config = {
     new MiniCssExtractPlugin(),
 
     // Add your plugins here
-    // Learn more about plugins from https://webpack.js.org/configuration/plugins/
-    // Just copy the damn WASM because webpack can't recognize
-    // Emscripten modules.
+    // FIXME: Not sure how to include these in the package by default...
     new CopyPlugin({
       patterns: [
         {
-          from: "node_modules/soundswallower/soundswallower.wasm*",
-          to: "[name][ext]",
-        },
-        // And copy the model files too.  FIXME: Not sure how
-        // this will work with require("soundswallower/model")
-        {
-          from: modelDir,
+          from: "node_modules/soundswallower/model",
           to: "model",
           globOptions: {
             ignore: ["**/fr-fr", "**/mdef.txt"],
@@ -75,18 +66,6 @@ const config = {
   },
   resolve: {
     extensions: [".tsx", ".ts", ".js"],
-    // Eliminate emscripten's node junk
-    fallback: {
-      crypto: false,
-      fs: false,
-      path: false,
-    },
-  },
-  // ARGH! More node junk! WTF!
-  node: {
-    global: false,
-    __filename: false,
-    __dirname: false,
   },
 };
 
