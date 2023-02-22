@@ -1,5 +1,5 @@
 {
-  "version": "0.6.0",
+  "version": "0.6.3",
   "description": "Simple SoundSwallower demo app",
   "name": "soundswallower-demo",
   "type": "module",
