@@ -6,7 +6,7 @@ import soundswallower_factory, {
   Endpointer,
   SoundSwallowerModule,
   DictEntry,
-} from "soundswallower";
+} from "soundswallower/jsonly";
 import {
   AudioContext,
   AudioWorkletNode,

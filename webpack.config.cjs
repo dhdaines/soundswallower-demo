@@ -1,4 +1,5 @@
 const path = require("path");
+const webpack = require("webpack");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CopyPlugin = require("copy-webpack-plugin");
@@ -22,6 +23,10 @@ const config = {
     new MiniCssExtractPlugin(),
 
     // Add your plugins here
+    // Work around an emscripten bug for now
+    new webpack.IgnorePlugin({
+        resourceRegExp: /\.wasm$/,
+    }),
     // FIXME: Not sure how to include these in the package by default...
     new CopyPlugin({
       patterns: [
