@@ -1,4 +1,4 @@
-// Copyright (c) 2022 David Huggins-Daines <dhdaines@gmail.com>
+// Copyright (c) 2022 David Huggins-Daines <dhd@ecolingui.ca>
 // MIT license, see LICENSE for details
 
 import soundswallower_factory, {
