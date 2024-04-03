@@ -45,6 +45,7 @@ class DemoApp {
 
   context: AudioContext;
   worklet_node: AudioWorkletNode<AudioContext>;
+  stream: MediaStream;
   media_source: MediaStreamAudioSourceNode<AudioContext>;
   decoder: Decoder;
   endpointer: Endpointer;
@@ -157,8 +158,6 @@ class DemoApp {
     );
     this.context = new AudioContext({ sampleRate: 8000 });
     await this.context.suspend();
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    this.media_source = this.context.createMediaStreamSource(stream);
     const workletURL = new URL("./processor.js", import.meta.url);
     await this.context.audioWorklet.addModule(workletURL.toString());
     this.endpointer = new soundswallower.Endpointer({
@@ -169,7 +168,6 @@ class DemoApp {
       this.context,
       "getaudio-processor"
     );
-    this.media_source.connect(this.worklet_node);
     this.updateStatus("Audio recorder ready");
   }
 
@@ -223,6 +221,9 @@ class DemoApp {
     });
     this.startButton.addEventListener("click", async () => {
       await this.context.resume();
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.media_source = this.context.createMediaStreamSource(this.stream);
+      this.media_source.connect(this.worklet_node);
       this.displayRecording(true);
       this.startButton.disabled = true;
       this.stopButton.disabled = false;
@@ -238,6 +239,10 @@ class DemoApp {
       }
       this.updateDownload();
       this.displayRecording(false);
+      this.media_source.disconnect();
+      for (const track of this.stream.getTracks()) {
+        track.stop();
+      }
       this.startButton.disabled = false;
       this.stopButton.disabled = true;
       return true;
